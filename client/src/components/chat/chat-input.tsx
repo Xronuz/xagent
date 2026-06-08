@@ -13,7 +13,7 @@ import {
   PromptInputTools,
   type PromptInputMessage,
 } from "../ai-elements/prompt-input";
-import { GitBranch, GitPullRequest, FolderOpen, Target, Paperclip, CheckCircle2, Circle, PlayCircle, AlertCircle } from "lucide-react";
+import { GitBranch, GitPullRequest, FolderOpen, Target, Paperclip, CheckCircle2, Circle, PlayCircle, AlertCircle, Shield, Zap, SkipForward, ChevronDown } from "lucide-react";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import githubLogo from "@/assets/github.svg";
@@ -21,6 +21,8 @@ import { connectGithub, pickLocalFolder } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import type { ExecutionPolicy } from "@/components/goal/goal-timeline";
 
 type SelectedRepo = {
   value: string;
@@ -62,6 +64,8 @@ type ChatInputProps = {
   onLocalPathChange: (path: string) => void;
   goalState?: any;
   isGoalPending?: boolean;
+  executionPolicy?: ExecutionPolicy;
+  onExecutionPolicyChange?: (policy: ExecutionPolicy) => void;
 };
 
 const ChatInput = ({
@@ -89,6 +93,8 @@ const ChatInput = ({
   onLocalPathChange,
   goalState,
   isGoalPending,
+  executionPolicy = "safe",
+  onExecutionPolicyChange,
 }: ChatInputProps) => {
   const isRepoSelectLocked = isFetchingRepos || hasMessages;
   const repoLabel = repoOptions?.find(
@@ -150,6 +156,14 @@ const ChatInput = ({
         hasMessages ? "max-w-212" : "max-w-3xl"
       )}>
         
+        {/* YOLO Mode Warning */}
+        {goalModeEnabled && executionPolicy === "yolo" && (
+          <div className="w-full mb-1 flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/30 rounded-xl text-[11px] font-semibold text-red-500 tracking-wide">
+            <SkipForward className="size-3 shrink-0" />
+            YOLO MODE: XAgent may modify files without confirmation
+          </div>
+        )}
+
         {/* ── Context Strip (Top Row) ── */}
         <div className="w-full mb-2 flex items-center gap-2 px-2 text-xs overflow-x-auto no-scrollbar">
           
@@ -297,6 +311,58 @@ const ChatInput = ({
                  </div>
                </PopoverContent>
              </Popover>
+          )}
+
+          {/* Execution Policy Chip (only in goal mode) */}
+          {goalModeEnabled && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-7 gap-1.5 rounded-full border-border bg-background/80 shadow-sm shrink-0 hover:bg-muted/50 px-2.5",
+                    executionPolicy === "yolo" && "border-red-500/50 text-red-500",
+                    executionPolicy === "auto" && "border-amber-500/50 text-amber-500",
+                    executionPolicy === "safe" && "border-blue-500/50 text-blue-500",
+                  )}
+                >
+                  {executionPolicy === "safe" && <Shield className="size-3" />}
+                  {executionPolicy === "auto" && <Zap className="size-3" />}
+                  {executionPolicy === "yolo" && <SkipForward className="size-3" />}
+                  <span className="text-[11px] font-medium uppercase tracking-wider">
+                    {executionPolicy === "safe" ? "Safe Mode" : executionPolicy === "auto" ? "Auto Execute" : "YOLO"}
+                  </span>
+                  <ChevronDown className="size-3 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" sideOffset={8} className="w-52">
+                <DropdownMenuItem onClick={() => onExecutionPolicyChange?.("safe")} className="flex items-center gap-2 cursor-pointer">
+                  <Shield className="size-4 text-blue-500" />
+                  <div>
+                    <div className="text-xs font-semibold">Safe Mode</div>
+                    <div className="text-[10px] text-muted-foreground">Pause after every batch</div>
+                  </div>
+                  {executionPolicy === "safe" && <CheckCircle2 className="size-3.5 ml-auto text-primary" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onExecutionPolicyChange?.("auto")} className="flex items-center gap-2 cursor-pointer">
+                  <Zap className="size-4 text-amber-500" />
+                  <div>
+                    <div className="text-xs font-semibold">Auto Execute</div>
+                    <div className="text-[10px] text-muted-foreground">Pause only on errors</div>
+                  </div>
+                  {executionPolicy === "auto" && <CheckCircle2 className="size-3.5 ml-auto text-primary" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onExecutionPolicyChange?.("yolo")} className="flex items-center gap-2 cursor-pointer text-red-500 focus:text-red-500">
+                  <SkipForward className="size-4" />
+                  <div>
+                    <div className="text-xs font-semibold">YOLO Mode</div>
+                    <div className="text-[10px] text-muted-foreground opacity-80">Run everything, no gates</div>
+                  </div>
+                  {executionPolicy === "yolo" && <CheckCircle2 className="size-3.5 ml-auto" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {/* PR Buttons */}

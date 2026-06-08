@@ -9,10 +9,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { Flag } from "lucide-react";
 
 export function GoalPanel({ slugId, isOpen, onClose }: { slugId: string; isOpen: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
-  const [goalInput, setGoalInput] = useState("");
   const [verificationNotes, setVerificationNotes] = useState("");
   const [blockReason, setBlockReason] = useState("");
   const [resetInput, setResetInput] = useState("");
@@ -125,22 +125,10 @@ export function GoalPanel({ slugId, isOpen, onClose }: { slugId: string; isOpen:
           )}
 
           {!isPending && !state && (
-            <div className="space-y-4">
-              <h3 className="font-medium text-sm">Define a new Goal</h3>
-              <Textarea 
-                placeholder="E.g. Build a landing page..." 
-                value={goalInput}
-                onChange={(e) => setGoalInput(e.target.value)}
-                rows={4}
-              />
-              <Button 
-                onClick={() => mutation.mutate({ action: "analyze", goal: goalInput })}
-                disabled={mutation.isPending || !goalInput.trim()}
-                className="w-full"
-              >
-                {mutation.isPending ? <Spinner className="mr-2" /> : null}
-                Analyze Goal
-              </Button>
+            <div className="flex flex-col items-center justify-center py-12 text-center gap-3 text-muted-foreground">
+              <Flag className="size-8 opacity-30" />
+              <p className="text-sm font-medium">No active goal</p>
+              <p className="text-xs opacity-70">Switch to Goal Mode in the chat input and submit a goal to get started.</p>
             </div>
           )}
 
