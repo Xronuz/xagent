@@ -61,6 +61,7 @@ type ChatInputProps = {
   onWorkspaceModeChange: (mode: WorkspaceMode) => void;
   onLocalPathChange: (path: string) => void;
   goalState?: any;
+  isGoalPending?: boolean;
 };
 
 const ChatInput = ({
@@ -87,6 +88,7 @@ const ChatInput = ({
   onWorkspaceModeChange,
   onLocalPathChange,
   goalState,
+  isGoalPending,
 }: ChatInputProps) => {
   const isRepoSelectLocked = isFetchingRepos || hasMessages;
   const repoLabel = repoOptions?.find(
@@ -154,13 +156,13 @@ const ChatInput = ({
           {/* Status Chip */}
           <div className="flex items-center gap-1.5 px-2.5 h-7 rounded-full border border-border bg-background/80 shadow-sm shrink-0">
              <div className={cn("size-2 rounded-full", 
-               status === "submitted" ? "bg-amber-500 animate-pulse" :
+               status === "submitted" || isGoalPending ? "bg-amber-500 animate-pulse" :
                goalState?.executionStatus && ["running", "verifying", "self_healing"].includes(goalState.executionStatus) ? "bg-amber-500 animate-pulse" : 
                goalState?.executionStatus === "blocked" ? "bg-red-500" :
                "bg-green-500" // Awaiting input
              )} />
              <span className="text-muted-foreground font-medium text-[11px] uppercase tracking-wider">
-               {status === "submitted" ? "Thinking" :
+               {status === "submitted" || isGoalPending ? "Thinking" :
                 goalState?.executionStatus && ["running", "verifying", "self_healing"].includes(goalState.executionStatus) ? goalState.executionStatus :
                 goalState?.executionStatus === "blocked" ? "Blocked" :
                 "Awaiting Input"}

@@ -6,6 +6,7 @@ import { createSessionPullRequest, getGithubRepos, executeGoalAction, getGoalSta
 import { cn, generateSlugId } from "@/lib/utils";
 import type { GithubRepo } from "@/types/github.type";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { GitBranch, FolderOpen, Target, Download, Play, StopCircle, RefreshCw, PlusCircle, LogOut, ArrowLeft, Paperclip, AlertCircle } from "lucide-react";
 import { BASE_API_URL } from "@/lib/env";
 import { toast } from "sonner";
 import { Check } from "lucide-react";
@@ -141,10 +142,13 @@ const ChatInterface = ({
     },
   });
 
+  const [goalAnalyzeProgress, setGoalAnalyzeProgress] = useState<string | null>(null);
+  const [goalAnalyzeError, setGoalAnalyzeError] = useState<string | null>(null);
+
   const { data: goalData } = useQuery({
     queryKey: ["goal", slugId],
     queryFn: () => getGoalState(slugId),
-    enabled: !!slugId,
+    enabled: !!slugId && !goalAnalyzeMutation.isPending,
     refetchInterval: (query) => {
       const execStatus = query.state?.data?.state?.executionStatus;
       return ["running", "verifying", "self_healing"].includes(execStatus) ? 3000 : false;
@@ -160,7 +164,7 @@ const ChatInterface = ({
       setIsGoalPanelOpen(true);
     },
     onError: () => {
-      toast.error("Failed to analyze goal");
+      // toast is now handled in handleGoalSubmit
     },
   });
 
@@ -178,8 +182,24 @@ const ChatInterface = ({
       toast.error("Please enter a local folder path");
       return Promise.reject(new Error("No local path"));
     }
+    // Optimistically clear the goal state so stale goal chips disappear while analyzing
+    queryClient.setQueryData(["goal", slugId], null);
+    setGoalAnalyzeError(null);
+    setGoalAnalyzeProgress("Planning goal...");
     
-    await goalAnalyzeMutation.mutateAsync(message.text);
+    try {
+      await goalAnalyzeMutation.mutateAsync(message.text);
+      // Wait, is text kept?
+      // actually, if it succeeds, we want the prompt to be cleared.
+      // returning a resolved promise means PromptInput will clear it.
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.error || err.message || "Goal analysis failed. Please check your API key, model connection, or try again.";
+      setGoalAnalyzeError(errorMsg);
+      toast.error(errorMsg);
+      throw err; // throw so PromptInput doesn't clear the text
+    } finally {
+      setGoalAnalyzeProgress(null);
+    }
   };
 
 
@@ -436,6 +456,29 @@ const ChatInterface = ({
                 })
               )}
 
+              {goalAnalyzeProgress && (
+                <Message className="my-4">
+                  <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg border border-border">
+                    <Spinner className="size-4 text-primary shrink-0" />
+                    <span className="text-sm font-medium">
+                      {goalAnalyzeProgress}
+                    </span>
+                  </div>
+                </Message>
+              )}
+
+              {goalAnalyzeError && (
+                <Message className="my-4">
+                  <div className="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/20 text-red-500">
+                    <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                    <div className="text-sm font-medium">
+                      <div className="mb-1">Failed to analyze goal</div>
+                      <div className="text-xs opacity-80 font-normal">{goalAnalyzeError}</div>
+                    </div>
+                  </div>
+                </Message>
+              )}
+
               {isLoading && messages.length > 0 && (
                 <div className="flex items-center gap-2 px-2">
                   <Loader />
@@ -486,6 +529,7 @@ const ChatInterface = ({
           onWorkspaceModeChange={setWorkspaceMode}
           onLocalPathChange={setLocalPath}
           goalState={goalState}
+          isGoalPending={goalAnalyzeMutation.isPending}
         />
       </div>
     </div>
