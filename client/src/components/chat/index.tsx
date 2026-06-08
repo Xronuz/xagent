@@ -315,7 +315,7 @@ const ChatInterface = ({
     addEvent({ type: "batch_starting", taskId, taskTitle, id: nextId(), ts: Date.now() });
     await startBatchMutation.mutateAsync(taskId);
 
-    const result = await executeOneBatch(taskId, taskTitle, executionPolicy === "yolo");
+    const result = await executeOneBatch(taskId, taskTitle, isHighRiskApproved || executionPolicy === "yolo");
 
     if (!result.success) {
       autoRunRef.current = false;
