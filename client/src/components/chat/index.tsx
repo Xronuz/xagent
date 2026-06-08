@@ -145,6 +145,17 @@ const ChatInterface = ({
   const [goalAnalyzeProgress, setGoalAnalyzeProgress] = useState<string | null>(null);
   const [goalAnalyzeError, setGoalAnalyzeError] = useState<string | null>(null);
 
+  const goalAnalyzeMutation = useMutation({
+    mutationFn: (goal: string) => executeGoalAction(slugId, { action: "analyze", goal }),
+    onSuccess: (res) => {
+      queryClient.setQueryData(["goal", slugId], { state: res.state });
+      setIsGoalPanelOpen(true);
+    },
+    onError: () => {
+      // toast is now handled in handleGoalSubmit
+    },
+  });
+
   const { data: goalData } = useQuery({
     queryKey: ["goal", slugId],
     queryFn: () => getGoalState(slugId),
@@ -156,17 +167,6 @@ const ChatInterface = ({
   });
   
   const goalState = goalData?.state;
-
-  const goalAnalyzeMutation = useMutation({
-    mutationFn: (goal: string) => executeGoalAction(slugId, { action: "analyze", goal }),
-    onSuccess: (res) => {
-      queryClient.setQueryData(["goal", slugId], { state: res.state });
-      setIsGoalPanelOpen(true);
-    },
-    onError: () => {
-      // toast is now handled in handleGoalSubmit
-    },
-  });
 
   const handleGoalSubmit = async (message: any) => {
     if (!message.text.trim()) {
