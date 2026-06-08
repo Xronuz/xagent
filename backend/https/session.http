@@ -1,0 +1,32 @@
+GET http://localhost:8000/api/session/all
+
+GET http://localhost:8000/api/session/:slugId
+
+POST http://localhost:8000/api/session/:slugId/pr
+Content-Type: application/json
+{
+    "title":"",
+    "body":"",
+}
+
+
+POST http://localhost:8000/api/session/chat
+Content-Type: application/json
+{
+  "slugId": "a2b3c4d",
+  "defaultBranch":"base44/landing-page-build-7z4iee",
+  "repoUrl":"https://github.com/emmazurglas/webapp-project-saas-app.git",
+   "messages": [
+    {
+      "id": "msg_user_1a2b3c4d",
+      "role": "user",
+      "parts": [
+        {
+          "type": "text",
+          "text": "what framework is this"
+        }
+      ]
+    }
+  ]
+
+}
