@@ -2,7 +2,7 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { useUser } from "@/hooks/use-user";
-import { createSessionPullRequest, getGithubRepos, executeGoalAction } from "@/lib/api";
+import { createSessionPullRequest, getGithubRepos, executeGoalAction, getGoalState } from "@/lib/api";
 import { cn, generateSlugId } from "@/lib/utils";
 import type { GithubRepo } from "@/types/github.type";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -140,6 +140,18 @@ const ChatInterface = ({
       toast.error("Failed to create pull request");
     },
   });
+
+  const { data: goalData } = useQuery({
+    queryKey: ["goal", slugId],
+    queryFn: () => getGoalState(slugId),
+    enabled: !!slugId,
+    refetchInterval: (query) => {
+      const execStatus = query.state?.data?.state?.executionStatus;
+      return ["running", "verifying", "self_healing"].includes(execStatus) ? 3000 : false;
+    },
+  });
+  
+  const goalState = goalData?.state;
 
   const goalAnalyzeMutation = useMutation({
     mutationFn: (goal: string) => executeGoalAction(slugId, { action: "analyze", goal }),
@@ -473,6 +485,7 @@ const ChatInterface = ({
           localPath={localPath}
           onWorkspaceModeChange={setWorkspaceMode}
           onLocalPathChange={setLocalPath}
+          goalState={goalState}
         />
       </div>
     </div>

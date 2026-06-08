@@ -60,6 +60,7 @@ type ChatInputProps = {
   localPath: string;
   onWorkspaceModeChange: (mode: WorkspaceMode) => void;
   onLocalPathChange: (path: string) => void;
+  goalState?: any;
 };
 
 const ChatInput = ({
@@ -85,6 +86,7 @@ const ChatInput = ({
   localPath,
   onWorkspaceModeChange,
   onLocalPathChange,
+  goalState,
 }: ChatInputProps) => {
   const isRepoSelectLocked = isFetchingRepos || hasMessages;
   const repoLabel = repoOptions?.find(
@@ -142,280 +144,187 @@ const ChatInput = ({
 
   return (
     <div className="absolute inset-x-0 bottom-0 z-20 shrink-0">
-      <div className={cn("w-full mx-auto px-0 pb-4 backdrop-blur-sm rounded-2xl",
+      <div className={cn("w-full mx-auto px-0 pb-4 backdrop-blur-sm",
         hasMessages ? "max-w-212" : "max-w-3xl"
       )}>
-        {(workspaceMode === "local" ? localPath : repo) && (
-          <div className="mb-2 flex items-center justify-between gap-3 px-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 gap-2 rounded-full border-border bg-background/50 backdrop-blur shadow-sm">
-                  {workspaceMode === "local" ? (
-                    <FolderOpen className="size-3.5 text-muted-foreground" />
-                  ) : (
-                    <GitBranch className="size-3.5 text-muted-foreground" />
-                  )}
-                  <span className="truncate max-w-[250px] text-[13px]">
-                    {workspaceMode === "local" 
-                      ? (localPath.length > 35 ? `...${localPath.slice(-35)}` : localPath || "Local Folder") 
-                      : repoLabel || "No Repo"}
-                  </span>
-                  <ChevronDown className="size-3 text-muted-foreground ml-1" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 text-sm" align="start" sideOffset={8}>
-                <div className="space-y-3">
-                  <div className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">Workspace Details</div>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <span className="text-muted-foreground">Type:</span>
-                    <span className="col-span-2 font-medium capitalize">{workspaceMode} Workspace</span>
-                    
-                    <span className="text-muted-foreground">{workspaceMode === 'local' ? 'Path:' : 'Repo:'}</span>
-                    <span className="col-span-2 font-medium break-all">{workspaceMode === 'local' ? localPath : repo?.value}</span>
-                    
-                    {workspaceMode === 'github' && (
-                      <>
-                        <span className="text-muted-foreground">Branch:</span>
-                        <span className="col-span-2 font-medium break-all">{prReady?.branch || branchName}</span>
-                      </>
-                    )}
+        
+        {/* ── Mode Switcher ── */}
+        <div className="flex justify-center w-full mb-1">
+          <div className="flex bg-background/90 backdrop-blur border border-border p-1 rounded-t-xl shadow-sm relative top-px z-10">
+            <button type="button" onClick={() => goalModeEnabled && onGoalModeToggle()} className={cn("px-5 py-1.5 text-[13px] font-semibold rounded-md transition-all flex items-center gap-2", !goalModeEnabled ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+              Chat
+            </button>
+            <button type="button" onClick={() => !goalModeEnabled && onGoalModeToggle()} className={cn("px-5 py-1.5 text-[13px] font-semibold rounded-md transition-all flex items-center gap-2", goalModeEnabled ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+              <Target className="size-3.5" /> Goal
+            </button>
+          </div>
+        </div>
+
+        {/* ── Context Strip ── */}
+        <div className="w-full mb-2 flex flex-col sm:flex-row items-center gap-2 px-2 text-xs">
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 gap-2 rounded-full border-border bg-background/80 backdrop-blur shadow-sm shrink-0">
+                {workspaceMode === "local" ? (
+                  <FolderOpen className="size-3.5 text-muted-foreground" />
+                ) : (
+                  <GitBranch className="size-3.5 text-muted-foreground" />
+                )}
+                <span className="truncate max-w-[200px] text-[13px] font-medium">
+                  {workspaceMode === "local" 
+                    ? (localPath.length > 25 ? `...${localPath.slice(-25)}` : localPath || "Local Folder") 
+                    : repoLabel || "No Repo"}
+                </span>
+                <ChevronDown className="size-3 text-muted-foreground ml-1" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[340px] text-sm p-4" align="start" sideOffset={8}>
+              <div className="space-y-4">
+                <div>
+                  <div className="font-semibold text-xs text-muted-foreground uppercase tracking-wider mb-3">Workspace Type</div>
+                  <div className="flex bg-muted/50 p-1 rounded-lg border border-border mb-4">
+                    <button type="button" onClick={() => onWorkspaceModeChange("github")} className={cn("flex-1 text-xs font-medium py-2 rounded-md transition-colors flex items-center justify-center gap-2", workspaceMode === "github" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}>
+                      <img src={githubLogo} alt="" className="size-3.5" /> GitHub
+                    </button>
+                    <button type="button" onClick={() => onWorkspaceModeChange("local")} className={cn("flex-1 text-xs font-medium py-2 rounded-md transition-colors flex items-center justify-center gap-2", workspaceMode === "local" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}>
+                      <FolderOpen className="size-3.5" /> Local
+                    </button>
                   </div>
                 </div>
-              </PopoverContent>
-            </Popover>
 
-            {/* PR buttons — only for GitHub mode */}
-            {workspaceMode === "github" && (
-              <>
-                {createdPrUrl ? (
-                  <Button className="bg-black/70! text-white h-8 text-xs rounded-full" size="sm" asChild>
-                    <a href={createdPrUrl} target="_blank" rel="noreferrer">
-                      <GitPullRequest className="size-3.5 mr-1.5" />
-                      View PR
-                    </a>
-                  </Button>
-                ) : (
-                  <Button
-                    className="bg-black/70! text-white h-8 text-xs rounded-full" size="sm"
-                    onClick={onCreatePr}
-                    disabled={isCreatingPr || !prReady}
-                  >
-                    {isCreatingPr ? (
-                      <>
-                        <Spinner className="size-3.5 mr-1.5" />
-                        Creating PR...
-                      </>
+                {workspaceMode === "github" ? (
+                  <div className="space-y-2">
+                    <div className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">Repository</div>
+                    {!isGithubConnected ? (
+                      <Button variant="outline" className="w-full" onClick={handleConnect}>
+                        <img src={githubLogo} alt="" className="size-4 mr-2" />
+                        Connect GitHub
+                      </Button>
                     ) : (
-                      <>
-                        <GitPullRequest className="size-3.5 mr-1.5" />
-                        {prReady ? "Create PR" : "PR unavailable"}
-                      </>
+                      <PromptInputSelect value={repo?.value ?? ""} onValueChange={setRepo}>
+                        <PromptInputSelectTrigger aria-disabled={isRepoSelectLocked} data-disabled={isRepoSelectLocked ? "" : undefined} className={cn("w-full h-9", isRepoSelectLocked ? "opacity-60 cursor-not-allowed" : "")}>
+                          <span className="flex items-center gap-2">
+                            {isFetchingRepos ? <Spinner /> : <img src={githubLogo} alt="" className="size-4" />}
+                            <PromptInputSelectValue placeholder="Select repository" />
+                          </span>
+                        </PromptInputSelectTrigger>
+                        <PromptInputSelectContent>
+                          {repoOptions?.map((option) => (
+                            <PromptInputSelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </PromptInputSelectItem>
+                          ))}
+                        </PromptInputSelectContent>
+                      </PromptInputSelect>
                     )}
-                  </Button>
-                )}
-              </>
-            )}
-
-            {/* For local mode — show commit button or nothing */}
-            {workspaceMode === "local" && prReady && (
-              <Button
-                className="bg-black/70! text-white h-8 text-xs rounded-full" size="sm"
-                onClick={onCreatePr}
-                disabled={isCreatingPr}
-              >
-                {isCreatingPr ? (
-                  <>
-                    <Spinner className="size-3.5 mr-1.5" />
-                    Pushing...
-                  </>
+                    {branchName && (
+                      <div className="text-xs text-muted-foreground pt-1">
+                        Active Branch: <span className="font-medium text-foreground">{prReady?.branch || branchName}</span>
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <>
-                    <GitPullRequest className="size-3.5 mr-1.5" />
-                    Push & PR
-                  </>
+                  <div className="space-y-2">
+                    <div className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">Local Directory</div>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2 h-9 rounded-md border border-border px-3 bg-muted/30">
+                        <FolderOpen className="size-4 text-muted-foreground shrink-0" />
+                        <input
+                          ref={pathInputRef}
+                          type="text"
+                          value={localPathInput}
+                          onChange={(e) => setLocalPathInput(e.target.value)}
+                          onBlur={handleLocalPathBlur}
+                          onKeyDown={handleLocalPathKeyDown}
+                          placeholder="/path/to/project"
+                          className="flex-1 bg-transparent text-xs outline-none"
+                          disabled={hasMessages}
+                        />
+                      </div>
+                      {!hasMessages && (
+                        <Button type="button" variant="secondary" size="sm" className="w-full h-8 text-xs" onClick={handlePickFolder} disabled={isPickingFolder}>
+                          {isPickingFolder ? <Spinner className="mr-2 h-3 w-3" /> : null}
+                          Choose Folder...
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 )}
-              </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Goal & Status Pill */}
+          <div 
+            className="flex-1 min-w-0 flex items-center gap-2 px-3 h-8 rounded-full border border-border bg-background/80 hover:bg-muted/50 cursor-pointer transition-colors shadow-sm"
+            onClick={onOpenGoalPanel}
+          >
+            <Target className="size-3.5 text-muted-foreground shrink-0" />
+            <span className="truncate text-[13px]">
+              {!goalState?.goal ? (
+                <span className="text-muted-foreground">No active goal</span>
+              ) : (
+                <>
+                  <span className="font-medium mr-2 text-foreground">
+                    {goalState.goal.length > 50 ? goalState.goal.substring(0, 50) + '...' : goalState.goal}
+                  </span>
+                  {goalState.currentBatchId && (
+                    <span className="text-muted-foreground">({goalState.currentBatchId})</span>
+                  )}
+                </>
+              )}
+            </span>
+            
+            {goalState?.executionStatus && (
+              <span className="ml-auto flex items-center gap-1.5 shrink-0 pl-2 border-l border-border/50">
+                <div className={cn("size-2 rounded-full", 
+                  ["running", "verifying", "self_healing"].includes(goalState.executionStatus) ? "bg-amber-500 animate-pulse" : 
+                  goalState.executionStatus === "completed" ? "bg-green-500" : 
+                  goalState.executionStatus === "failed" || goalState.executionStatus === "blocked" ? "bg-red-500" : 
+                  "bg-muted-foreground"
+                )} />
+                <span className="text-muted-foreground font-medium text-[11px] uppercase tracking-wider">{goalState.executionStatus}</span>
+              </span>
             )}
           </div>
-        )}
+
+          {/* PR Buttons */}
+          {(workspaceMode === "github" ? createdPrUrl || prReady : prReady) && (
+            <div className="shrink-0">
+              {createdPrUrl ? (
+                <Button className="bg-black/70! text-white h-8 text-xs rounded-full" size="sm" asChild>
+                  <a href={createdPrUrl} target="_blank" rel="noreferrer">
+                    <GitPullRequest className="size-3.5 mr-1.5" /> View PR
+                  </a>
+                </Button>
+              ) : (
+                <Button
+                  className="bg-black/70! text-white h-8 text-xs rounded-full" size="sm"
+                  onClick={onCreatePr}
+                  disabled={isCreatingPr}
+                >
+                  {isCreatingPr ? (
+                    <><Spinner className="size-3.5 mr-1.5" /> Pushing...</>
+                  ) : (
+                    <><GitPullRequest className="size-3.5 mr-1.5" /> {workspaceMode === "github" ? "Create PR" : "Push & PR"}</>
+                  )}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
 
         <PromptInput
-          className="border px-0 bg-background py-0 shadow-sm rounded-3xl!"
+          className={cn("border px-0 bg-background py-0 shadow-md", goalModeEnabled ? "rounded-b-2xl rounded-t-lg ring-1 ring-primary/20" : "rounded-b-2xl rounded-t-lg")}
           onSubmit={handlePromptSubmit}
         >
           <PromptInputBody>
             <PromptInputTextarea placeholder={goalModeEnabled ? "Describe the goal you want XAgent to plan..." : "Ask XAgent to write anything..."} />
           </PromptInputBody>
-          <PromptInputFooter className="mt-3 flex items-center gap-2">
+          <PromptInputFooter className="mt-3 flex items-center justify-between gap-2">
             <PromptInputTools className="flex items-center gap-2 flex-wrap">
-
-              {/* ── Goal Mode Toggle ── */}
-              <button
-                type="button"
-                onClick={onGoalModeToggle}
-                className={cn("flex items-center gap-1.5 px-3 h-10 text-sm font-medium transition-colors rounded-lg border",
-                  goalModeEnabled ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Target className="size-4" />
-                {goalModeEnabled ? "Goal ON" : "Goal"}
-              </button>
-              
-              <button
-                type="button"
-                onClick={onOpenGoalPanel}
-                className="flex items-center gap-1.5 px-3 h-10 text-sm font-medium transition-colors rounded-lg border border-border bg-background text-muted-foreground hover:text-foreground"
-              >
-                View Goal
-              </button>
-
-              {/* ── Workspace Mode Toggle ── */}
-              {!hasMessages && (
-                <div className="flex items-center rounded-lg border border-border overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => onWorkspaceModeChange("github")}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 h-10 text-sm font-medium transition-colors",
-                      workspaceMode === "github"
-                        ? "bg-foreground text-background"
-                        : "bg-background text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <img src={githubLogo} alt="" className="size-3.5" />
-                    GitHub
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onWorkspaceModeChange("local")}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 h-10 text-sm font-medium transition-colors border-l border-border",
-                      workspaceMode === "local"
-                        ? "bg-foreground text-background"
-                        : "bg-background text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <FolderOpen className="size-3.5" />
-                    Local
-                  </button>
-                </div>
-              )}
-
-              {/* ── GitHub Repo Selector ── */}
-              {workspaceMode === "github" && (
-                <>
-                  {!isGithubConnected ? (
-                    <Button variant="outline" type="button" onClick={handleConnect}>
-                      <span className="flex items-center gap-2">
-                        <img src={githubLogo} alt="" className="size-4" />
-                        Connect GitHub
-                      </span>
-                    </Button>
-                  ) : hasMessages ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="bg-transparent! cursor-not-allowed! opacity-50!"
-                    >
-                      {isFetchingRepos ? (
-                        <Spinner />
-                      ) : (
-                        <img src={githubLogo} alt="" className="size-4" />
-                      )}
-                      <span className="min-w-0 truncate">
-                        {repoLabel ?? "Select a repository"}
-                      </span>
-                    </Button>
-                  ) : (
-                    <PromptInputSelect
-                      value={repo?.value ?? ""}
-                      onValueChange={setRepo}
-                    >
-                      <PromptInputSelectTrigger
-                        aria-disabled={isRepoSelectLocked}
-                        data-disabled={isRepoSelectLocked ? "" : undefined}
-                        className={`h-10 truncate min-w-60 bg-background px-3 ${
-                          isRepoSelectLocked
-                            ? "cursor-not-allowed opacity-60"
-                            : ""
-                        }`}
-                      >
-                        <span className="flex items-center gap-2">
-                          {isFetchingRepos ? (
-                            <Spinner />
-                          ) : (
-                            <img src={githubLogo} alt="" className="size-4" />
-                          )}
-                          <PromptInputSelectValue placeholder="Select a repository" />
-                        </span>
-                      </PromptInputSelectTrigger>
-                      <PromptInputSelectContent className="shadow-lg">
-                        <div className="font-semibold text-sm p-3">
-                          All repositories
-                        </div>
-
-                        {repoOptions?.length === 0 ? (
-                          <div className="text-center text-sm text-muted-foreground p-3">
-                            No repositories found
-                          </div>
-                        ) : (
-                          repoOptions.map((option) => (
-                            <PromptInputSelectItem
-                              key={option.value}
-                              value={option.value}
-                              className="block rounded-lg px-3 py-2"
-                            >
-                              <span className="truncate max-w-[600px]">
-                                {option.label}
-                              </span>
-                            </PromptInputSelectItem>
-                          ))
-                        )}
-                      </PromptInputSelectContent>
-                    </PromptInputSelect>
-                  )}
-                </>
-              )}
-
-              {/* ── Local Folder Path Input ── */}
-              {workspaceMode === "local" && (
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-2 h-10 min-w-72 max-w-xs rounded-lg border border-border bg-background px-3">
-                    <FolderOpen className="size-4 text-muted-foreground shrink-0" />
-                    {hasMessages ? (
-                      <span className="text-sm text-muted-foreground truncate">
-                        {localPath || "No folder selected"}
-                      </span>
-                    ) : (
-                      <input
-                        ref={pathInputRef}
-                        type="text"
-                        value={localPathInput}
-                        onChange={(e) => setLocalPathInput(e.target.value)}
-                        onBlur={handleLocalPathBlur}
-                        onKeyDown={handleLocalPathKeyDown}
-                        placeholder="/Users/you/my-project"
-                        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                        disabled={hasMessages}
-                      />
-                    )}
-                  </div>
-                  {!hasMessages && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-10"
-                      onClick={handlePickFolder}
-                      disabled={isPickingFolder}
-                    >
-                      {isPickingFolder ? <Spinner className="mr-2" /> : <FolderOpen className="size-4 mr-2" />}
-                      Select Folder
-                    </Button>
-                  )}
-                </div>
-              )}
-
+              {/* Removed duplicate workspace controls and view goal buttons */}
             </PromptInputTools>
 
             <div className="ml-auto">
