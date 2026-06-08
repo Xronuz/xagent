@@ -17,6 +17,7 @@ import {
   ConversationScrollButton,
 } from "../ai-elements/conversation";
 import Logo from "../logo";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Message,
   MessageContent,
