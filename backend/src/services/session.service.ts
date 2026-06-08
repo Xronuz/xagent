@@ -120,7 +120,7 @@ const createOrGetSession = async (
       repoName = localPath.split("/").filter(Boolean).slice(-1)[0] || "workspace";
     }
 
-    box = await createBox(accessToken);
+    box = await createBox(accessToken, workspaceType === 'local' ? localPath : undefined);
     session = await SessionModel.create({
       userId,
       slugId,
@@ -132,9 +132,9 @@ const createOrGetSession = async (
       localPath: workspaceType === 'local' ? localPath : null,
     });
   } else if (session.boxId) {
-    box = await getBox(session.boxId, accessToken);
+    box = await getBox(session.boxId, accessToken, session.workspaceType === 'local' ? session.localPath || undefined : undefined);
   } else {
-    box = await createBox(accessToken);
+    box = await createBox(accessToken, session.workspaceType === 'local' ? session.localPath || undefined : undefined);
     await SessionModel.findByIdAndUpdate(session._id, { boxId: box.id });
     session.boxId = box.id;
   }
@@ -220,8 +220,6 @@ const ensureSessionWorkspaceReady = async (
     if (!fs.existsSync(localPath)) {
       throw new BadRequestException(`Local folder not found: ${localPath}`);
     }
-    // Box current dir ni to'g'ridan local papkaga o'rnatamiz
-    (box as any).currentDir = localPath;
 
     // Git init bo'lmagan bo'lsa init qilamiz
     if (!fs.existsSync(`${localPath}/.git`)) {

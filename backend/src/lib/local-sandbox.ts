@@ -64,13 +64,17 @@ export class LocalBox {
     gitToken?: string;
     gitUser?: string;
     gitEmail?: string;
+    workspacePath?: string;
   }) {
     this.boxDir = path.join(SANDBOXES_DIR, options.boxId);
-    this.currentDir = this.boxDir;
+    this.currentDir = options.workspacePath || this.boxDir;
     this.gitToken = options.gitToken || "";
     this.gitUser = options.gitUser || "xagent";
     this.gitEmail = options.gitEmail || "xronuz@gmail.com";
     ensureDir(this.boxDir);
+    if (options.workspacePath) {
+      ensureDir(options.workspacePath);
+    }
   }
 
   get id(): string {
@@ -436,6 +440,7 @@ export class LocalBox {
   static async create(opts: {
     runtime?: string;
     git?: { token: string; userName?: string; userEmail?: string };
+    workspacePath?: string;
   }): Promise<LocalBox> {
     const boxId = `box-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     return new LocalBox({
@@ -443,12 +448,13 @@ export class LocalBox {
       gitToken: opts.git?.token,
       gitUser: opts.git?.userName,
       gitEmail: opts.git?.userEmail,
+      workspacePath: opts.workspacePath,
     });
   }
 
   /** Static factory — Upstash Box.get() ga mos */
-  static async get(boxId: string): Promise<LocalBox> {
+  static async get(boxId: string, gitToken?: string, workspacePath?: string): Promise<LocalBox> {
     // boxId ni saqlashda token yo'q — env dan olamiz (runtime da qayta inject)
-    return new LocalBox({ boxId });
+    return new LocalBox({ boxId, gitToken, workspacePath });
   }
 }

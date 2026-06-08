@@ -58,8 +58,13 @@ export async function runBatchExecutor(slugId: string, repoUrl: string | null = 
     apiKey: process.env.DEEPSEEK_API_KEY || "",
   });
 
+  // Fetch session to determine if we are in local workspace mode
+  const { default: SessionModel } = await import("../../models/session.model");
+  const session = await SessionModel.findOne({ slugId }).lean();
+  const workspacePath = session?.workspaceType === 'local' ? session.localPath || undefined : undefined;
+
   // Exclude goal_manager to prevent bypassing batch constraints
-  const box = new LocalBox({ boxId: slugId });
+  const box = new LocalBox({ boxId: slugId, workspacePath });
   const allTools = codingTools(box, repoUrl, repoName, branchName, slugId);
   const { goal_manager, ...safeTools } = allTools as any;
 

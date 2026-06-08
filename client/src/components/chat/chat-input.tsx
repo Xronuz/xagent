@@ -13,7 +13,7 @@ import {
   PromptInputTools,
   type PromptInputMessage,
 } from "../ai-elements/prompt-input";
-import { GitBranch, GitPullRequest, FolderOpen } from "lucide-react";
+import { GitBranch, GitPullRequest, FolderOpen, Target } from "lucide-react";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import githubLogo from "@/assets/github.svg";
@@ -55,6 +55,7 @@ type ChatInputProps = {
   localPath: string;
   onWorkspaceModeChange: (mode: WorkspaceMode) => void;
   onLocalPathChange: (path: string) => void;
+  onGoalModeClick: () => void;
 };
 
 const ChatInput = ({
@@ -76,6 +77,7 @@ const ChatInput = ({
   localPath,
   onWorkspaceModeChange,
   onLocalPathChange,
+  onGoalModeClick,
 }: ChatInputProps) => {
   const isRepoSelectLocked = isFetchingRepos || hasMessages;
   const repoLabel = repoOptions?.find(
@@ -201,6 +203,16 @@ const ChatInput = ({
           </PromptInputBody>
           <PromptInputFooter className="mt-3 flex items-center gap-2">
             <PromptInputTools className="flex items-center gap-2 flex-wrap">
+
+              {/* ── Goal Mode Toggle ── */}
+              <button
+                type="button"
+                onClick={onGoalModeClick}
+                className="flex items-center gap-1.5 px-3 h-10 text-sm font-medium transition-colors rounded-lg border border-border bg-background text-muted-foreground hover:text-foreground"
+              >
+                <Target className="size-4" />
+                Goal Mode
+              </button>
 
               {/* ── Workspace Mode Toggle ── */}
               {!hasMessages && (

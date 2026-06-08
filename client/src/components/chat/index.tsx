@@ -29,7 +29,6 @@ import { renderToolPart } from "./tool-parts";
 import { Loader } from "../loader";
 import ChatInput, { type WorkspaceMode } from "./chat-input";
 import { useStickToBottomContext } from "use-stick-to-bottom";
-import { Button } from "@/components/ui/button";
 import { GoalPanel } from "@/components/goal/goal-panel";
 
 type ChatInterfaceProps = {
@@ -287,9 +286,6 @@ const ChatInterface = ({
       {sessionTitle && (
         <div className="border-b px-4 py-3 flex items-center justify-between">
           <h5 className="text-base font-medium">{sessionTitle}</h5>
-          <Button variant="outline" size="sm" onClick={() => setIsGoalPanelOpen(true)}>
-            Goal Mode
-          </Button>
         </div>
       )}
       <GoalPanel slugId={slugId} isOpen={isGoalPanelOpen} onClose={() => setIsGoalPanelOpen(false)} />
@@ -435,6 +431,7 @@ const ChatInterface = ({
           localPath={localPath}
           onWorkspaceModeChange={setWorkspaceMode}
           onLocalPathChange={setLocalPath}
+          onGoalModeClick={() => setIsGoalPanelOpen(true)}
         />
       </div>
     </div>
