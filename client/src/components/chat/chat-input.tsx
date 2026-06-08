@@ -13,13 +13,14 @@ import {
   PromptInputTools,
   type PromptInputMessage,
 } from "../ai-elements/prompt-input";
-import { GitBranch, GitPullRequest, FolderOpen, Target } from "lucide-react";
+import { GitBranch, GitPullRequest, FolderOpen, Target, ChevronDown } from "lucide-react";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import githubLogo from "@/assets/github.svg";
 import { connectGithub, pickLocalFolder } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type SelectedRepo = {
   value: string;
@@ -48,6 +49,10 @@ type ChatInputProps = {
   repoOptions: Array<{ value: string; label: string; defaultBranch: string }>;
   sandboxOptions: Array<{ value: string; label: string }>;
   onSubmit: (message: PromptInputMessage, options?: any) => void;
+  onGoalSubmit: (message: PromptInputMessage) => void;
+  goalModeEnabled: boolean;
+  onGoalModeToggle: () => void;
+  onOpenGoalPanel: () => void;
   onStop: () => void;
   onCreatePr: () => void;
   isCreatingPr: boolean;
@@ -55,7 +60,6 @@ type ChatInputProps = {
   localPath: string;
   onWorkspaceModeChange: (mode: WorkspaceMode) => void;
   onLocalPathChange: (path: string) => void;
-  onGoalModeClick: () => void;
 };
 
 const ChatInput = ({
@@ -69,6 +73,10 @@ const ChatInput = ({
   isFetchingRepos,
   status,
   onSubmit,
+  onGoalSubmit,
+  goalModeEnabled,
+  onGoalModeToggle,
+  onOpenGoalPanel,
   onStop,
   onCreatePr,
   repoOptions,
@@ -77,7 +85,6 @@ const ChatInput = ({
   localPath,
   onWorkspaceModeChange,
   onLocalPathChange,
-  onGoalModeClick,
 }: ChatInputProps) => {
   const isRepoSelectLocked = isFetchingRepos || hasMessages;
   const repoLabel = repoOptions?.find(
@@ -111,6 +118,9 @@ const ChatInput = ({
   }, [localPath]);
 
   const handlePromptSubmit = (message: PromptInputMessage) => {
+    if (goalModeEnabled) {
+      return onGoalSubmit(message);
+    }
     return onSubmit(message);
   };
 
@@ -135,53 +145,69 @@ const ChatInput = ({
       <div className={cn("w-full mx-auto px-0 pb-4 backdrop-blur-sm rounded-2xl",
         hasMessages ? "max-w-212" : "max-w-3xl"
       )}>
-        {branchName && repo && (
-          <div
-            className="mb-2 flex items-center justify-between gap-3 
-        rounded-2xl border border-border bg-transparent px-4 py-1.5 shadow-sm"
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex size-8 items-center justify-center rounded-full border border-border bg-muted/50">
-                {workspaceMode === "local" ? (
-                  <FolderOpen className="size-4 text-muted-foreground" />
-                ) : (
-                  <GitBranch className="size-4 text-muted-foreground" />
-                )}
-              </div>
-
-              <div className="min-w-0">
-                <p className="truncate text-[14.5px] font-medium">
-                  {workspaceMode === "local"
-                    ? localPath.split("/").slice(-1)[0] || "Local Folder"
-                    : prReady?.branch || branchName}
-                </p>
-              </div>
-            </div>
+        {(workspaceMode === "local" ? localPath : repo) && (
+          <div className="mb-2 flex items-center justify-between gap-3 px-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-2 rounded-full border-border bg-background/50 backdrop-blur shadow-sm">
+                  {workspaceMode === "local" ? (
+                    <FolderOpen className="size-3.5 text-muted-foreground" />
+                  ) : (
+                    <GitBranch className="size-3.5 text-muted-foreground" />
+                  )}
+                  <span className="truncate max-w-[250px] text-[13px]">
+                    {workspaceMode === "local" 
+                      ? (localPath.length > 35 ? `...${localPath.slice(-35)}` : localPath || "Local Folder") 
+                      : repoLabel || "No Repo"}
+                  </span>
+                  <ChevronDown className="size-3 text-muted-foreground ml-1" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 text-sm" align="start" sideOffset={8}>
+                <div className="space-y-3">
+                  <div className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">Workspace Details</div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <span className="text-muted-foreground">Type:</span>
+                    <span className="col-span-2 font-medium capitalize">{workspaceMode} Workspace</span>
+                    
+                    <span className="text-muted-foreground">{workspaceMode === 'local' ? 'Path:' : 'Repo:'}</span>
+                    <span className="col-span-2 font-medium break-all">{workspaceMode === 'local' ? localPath : repo?.value}</span>
+                    
+                    {workspaceMode === 'github' && (
+                      <>
+                        <span className="text-muted-foreground">Branch:</span>
+                        <span className="col-span-2 font-medium break-all">{prReady?.branch || branchName}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
 
             {/* PR buttons — only for GitHub mode */}
             {workspaceMode === "github" && (
               <>
                 {createdPrUrl ? (
-                  <Button className="bg-black/70! text-white" asChild>
+                  <Button className="bg-black/70! text-white h-8 text-xs rounded-full" size="sm" asChild>
                     <a href={createdPrUrl} target="_blank" rel="noreferrer">
-                      <GitPullRequest className="size-4" />
+                      <GitPullRequest className="size-3.5 mr-1.5" />
                       View PR
                     </a>
                   </Button>
                 ) : (
                   <Button
-                    className="bg-black/70! text-white"
+                    className="bg-black/70! text-white h-8 text-xs rounded-full" size="sm"
                     onClick={onCreatePr}
                     disabled={isCreatingPr || !prReady}
                   >
                     {isCreatingPr ? (
                       <>
-                        <Spinner className="size-4" />
+                        <Spinner className="size-3.5 mr-1.5" />
                         Creating PR...
                       </>
                     ) : (
                       <>
-                        <GitPullRequest className="size-4" />
+                        <GitPullRequest className="size-3.5 mr-1.5" />
                         {prReady ? "Create PR" : "PR unavailable"}
                       </>
                     )}
@@ -193,18 +219,18 @@ const ChatInput = ({
             {/* For local mode — show commit button or nothing */}
             {workspaceMode === "local" && prReady && (
               <Button
-                className="bg-black/70! text-white"
+                className="bg-black/70! text-white h-8 text-xs rounded-full" size="sm"
                 onClick={onCreatePr}
                 disabled={isCreatingPr}
               >
                 {isCreatingPr ? (
                   <>
-                    <Spinner className="size-4" />
+                    <Spinner className="size-3.5 mr-1.5" />
                     Pushing...
                   </>
                 ) : (
                   <>
-                    <GitPullRequest className="size-4" />
+                    <GitPullRequest className="size-3.5 mr-1.5" />
                     Push & PR
                   </>
                 )}
@@ -218,7 +244,7 @@ const ChatInput = ({
           onSubmit={handlePromptSubmit}
         >
           <PromptInputBody>
-            <PromptInputTextarea placeholder="Ask XAgent to write anything..." />
+            <PromptInputTextarea placeholder={goalModeEnabled ? "Describe the goal you want XAgent to plan..." : "Ask XAgent to write anything..."} />
           </PromptInputBody>
           <PromptInputFooter className="mt-3 flex items-center gap-2">
             <PromptInputTools className="flex items-center gap-2 flex-wrap">
@@ -226,11 +252,21 @@ const ChatInput = ({
               {/* ── Goal Mode Toggle ── */}
               <button
                 type="button"
-                onClick={onGoalModeClick}
-                className="flex items-center gap-1.5 px-3 h-10 text-sm font-medium transition-colors rounded-lg border border-border bg-background text-muted-foreground hover:text-foreground"
+                onClick={onGoalModeToggle}
+                className={cn("flex items-center gap-1.5 px-3 h-10 text-sm font-medium transition-colors rounded-lg border",
+                  goalModeEnabled ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:text-foreground"
+                )}
               >
                 <Target className="size-4" />
-                Goal Mode
+                {goalModeEnabled ? "Goal ON" : "Goal"}
+              </button>
+              
+              <button
+                type="button"
+                onClick={onOpenGoalPanel}
+                className="flex items-center gap-1.5 px-3 h-10 text-sm font-medium transition-colors rounded-lg border border-border bg-background text-muted-foreground hover:text-foreground"
+              >
+                View Goal
               </button>
 
               {/* ── Workspace Mode Toggle ── */}

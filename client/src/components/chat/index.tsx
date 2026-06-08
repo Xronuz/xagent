@@ -2,12 +2,13 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { useUser } from "@/hooks/use-user";
-import { createSessionPullRequest, getGithubRepos } from "@/lib/api";
+import { createSessionPullRequest, getGithubRepos, executeGoalAction } from "@/lib/api";
 import { cn, generateSlugId } from "@/lib/utils";
 import type { GithubRepo } from "@/types/github.type";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BASE_API_URL } from "@/lib/env";
 import { toast } from "sonner";
+import { Check } from "lucide-react";
 import {
   Conversation,
   ConversationContent,
@@ -103,6 +104,7 @@ const ChatInterface = ({
   );
   const [localPath, setLocalPath] = useState<string>("");
   const [isGoalPanelOpen, setIsGoalPanelOpen] = useState(false);
+  const [goalModeEnabled, setGoalModeEnabled] = useState(false);
 
   const [slugId] = useState(() => slugIdProp || generateSlugId());
 
@@ -138,6 +140,36 @@ const ChatInterface = ({
       toast.error("Failed to create pull request");
     },
   });
+
+  const goalAnalyzeMutation = useMutation({
+    mutationFn: (goal: string) => executeGoalAction(slugId, { action: "analyze", goal }),
+    onSuccess: (res) => {
+      queryClient.setQueryData(["goal", slugId], { state: res.state });
+      setIsGoalPanelOpen(true);
+    },
+    onError: () => {
+      toast.error("Failed to analyze goal");
+    },
+  });
+
+  const handleGoalSubmit = async (message: any) => {
+    if (!message.text.trim()) {
+      toast.error("Please enter a message");
+      return Promise.reject(new Error("Empty message"));
+    }
+    
+    if (workspaceMode === 'github' && (!isGithubConnected || !repo)) {
+      toast.error("Please select a repository first");
+      return Promise.reject(new Error("No repo"));
+    }
+    if (workspaceMode === 'local' && !localPath.trim()) {
+      toast.error("Please enter a local folder path");
+      return Promise.reject(new Error("No local path"));
+    }
+    
+    await goalAnalyzeMutation.mutateAsync(message.text);
+  };
+
 
   const transport = useMemo(
     () =>
@@ -307,16 +339,22 @@ const ChatInterface = ({
             >
               {messages.length === 0 && !isSingleSession ? (
                 <ConversationEmptyState className="px-6">
-                  <div className="flex flex-col items-center gap-4">
+                  <div className="flex flex-col items-center gap-6">
                     <Logo className="size-35" showText={false} />
-                    <div className="max-w-2xl space-y-2">
-                      <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                        What are we building today?
+                    <div className="max-w-2xl space-y-4 text-center">
+                      <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                        XAgent
                       </h2>
-                      <p className="text-sm leading-6 text-muted-foreground sm:text-base">
-                        Describe the feature, bug, or app you want to ship, and
-                        I’ll help you build it step by step.
+                      <p className="text-lg font-medium text-muted-foreground">
+                        Build. Test. Observe. Improve.
                       </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mt-6 text-sm font-medium text-muted-foreground text-left">
+                      <div className="flex items-center gap-2"><Check className="size-4 text-primary" /> Local Workspace</div>
+                      <div className="flex items-center gap-2"><Check className="size-4 text-primary" /> GitHub Repositories</div>
+                      <div className="flex items-center gap-2"><Check className="size-4 text-primary" /> Browser Observation</div>
+                      <div className="flex items-center gap-2"><Check className="size-4 text-primary" /> Goal Mode</div>
+                      <div className="flex items-center gap-2 col-span-2 justify-center"><Check className="size-4 text-primary" /> Autonomous Execution</div>
                     </div>
                   </div>
                 </ConversationEmptyState>
@@ -422,6 +460,10 @@ const ChatInterface = ({
           repo={repo}
           onStop={handleBack}
           onSubmit={handleSubmit}
+          onGoalSubmit={handleGoalSubmit}
+          goalModeEnabled={goalModeEnabled}
+          onGoalModeToggle={() => setGoalModeEnabled(!goalModeEnabled)}
+          onOpenGoalPanel={() => setIsGoalPanelOpen(true)}
           repoOptions={repoOptions}
           sandboxOptions={[{ value: "sandbox", label: "Sandbox" }]}
           setRepo={handleRepoChange}
@@ -431,7 +473,6 @@ const ChatInterface = ({
           localPath={localPath}
           onWorkspaceModeChange={setWorkspaceMode}
           onLocalPathChange={setLocalPath}
-          onGoalModeClick={() => setIsGoalPanelOpen(true)}
         />
       </div>
     </div>

@@ -41,6 +41,9 @@ export function GoalPanel({ slugId, isOpen, onClose }: { slugId: string; isOpen:
 
   const state = data?.state;
 
+  const [executionFeed, setExecutionFeed] = useState<{time: number, message: string}[]>([]);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
   const prevExecStatusRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -48,16 +51,46 @@ export function GoalPanel({ slugId, isOpen, onClose }: { slugId: string; isOpen:
     const currentStatus = state.executionStatus;
     const prevStatus = prevExecStatusRef.current;
     
+    // Execution start check
+    if (["running", "verifying", "self_healing"].includes(currentStatus)) {
+      if (!prevStatus || !["running", "verifying", "self_healing"].includes(prevStatus)) {
+        setExecutionFeed([]);
+        setElapsedSeconds(0);
+      }
+    }
+    
+    if (state.lastReport) {
+      setExecutionFeed(prev => {
+        if (prev.length === 0 || prev[prev.length - 1].message !== state.lastReport) {
+          return [...prev, { time: Date.now(), message: state.lastReport! }];
+        }
+        return prev;
+      });
+    }
+
     if (prevStatus && ["running", "verifying", "self_healing"].includes(prevStatus)) {
       if (currentStatus === "completed") {
+        setExecutionFeed(prev => [...prev, { time: Date.now(), message: "Status: Success" }]);
         toast.success("Batch execution completed");
       } else if (currentStatus === "failed") {
+        setExecutionFeed(prev => [...prev, { time: Date.now(), message: "Status: Failed" }]);
         toast.error("Batch execution failed");
       } else if (currentStatus === "blocked") {
+        setExecutionFeed(prev => [...prev, { time: Date.now(), message: "Status: Blocked" }]);
         toast.error("Execution blocked. Approval required.");
       }
     }
     prevExecStatusRef.current = currentStatus;
+  }, [state?.executionStatus, state?.lastReport]);
+
+  useEffect(() => {
+    let interval: any;
+    if (state && ["running", "verifying", "self_healing"].includes(state.executionStatus)) {
+       interval = setInterval(() => {
+          setElapsedSeconds(prev => prev + 1);
+       }, 1000);
+    }
+    return () => clearInterval(interval);
   }, [state?.executionStatus]);
 
   if (!isOpen) return null;
@@ -196,9 +229,31 @@ export function GoalPanel({ slugId, isOpen, onClose }: { slugId: string; isOpen:
                                     ) : "Execute Current Batch"}
                                   </Button>
 
-                                  {state.lastExecutionReport && (
-                                    <div className="p-2 text-xs bg-muted/50 border rounded-md">
-                                      <p className="font-semibold mb-1">Last Report:</p>
+                                  {(executionFeed.length > 0 || ["running", "verifying", "self_healing"].includes(state.executionStatus)) && (
+                                    <div className="p-2 text-[11px] font-mono bg-black text-green-400 border rounded-md overflow-hidden flex flex-col">
+                                      <div className="flex justify-between items-center mb-2 pb-1 border-b border-green-800">
+                                        <span className="font-semibold text-green-300">Live Execution Feed</span>
+                                        {["running", "verifying", "self_healing"].includes(state.executionStatus) && (
+                                          <span className="text-green-500">{Math.floor(elapsedSeconds / 60)}:{(elapsedSeconds % 60).toString().padStart(2, '0')}</span>
+                                        )}
+                                      </div>
+                                      <div className="space-y-1 max-h-40 overflow-y-auto flex flex-col">
+                                        {executionFeed.map((feed, idx) => (
+                                          <div key={idx} className={idx === executionFeed.length - 1 ? "text-green-300 font-semibold" : "text-green-500 opacity-80"}>
+                                            <span className="opacity-50 mr-2">{new Date(feed.time).toLocaleTimeString([], { hour12: false })}</span>
+                                            {feed.message}
+                                          </div>
+                                        ))}
+                                        {["running", "verifying", "self_healing"].includes(state.executionStatus) && (
+                                          <div className="text-green-300 animate-pulse mt-1">...</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {state.lastExecutionReport && !["running", "verifying", "self_healing"].includes(state.executionStatus) && (
+                                    <div className="p-2 text-xs bg-muted/50 border rounded-md mt-2">
+                                      <p className="font-semibold mb-1">Final Summary:</p>
                                       <p className="text-muted-foreground mb-2">{state.lastExecutionReport.message || (state.lastExecutionReport.success ? "Success" : "Failed")}</p>
                                       {state.lastExecutionReport.agentOutput && (
                                         <pre className="text-[10px] bg-background p-2 rounded overflow-auto max-h-32">
