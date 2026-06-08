@@ -13,7 +13,7 @@ import {
   PromptInputTools,
   type PromptInputMessage,
 } from "../ai-elements/prompt-input";
-import { GitBranch, GitPullRequest, FolderOpen, Target, ChevronDown } from "lucide-react";
+import { GitBranch, GitPullRequest, FolderOpen, Target, Paperclip, CheckCircle2, Circle, PlayCircle, AlertCircle } from "lucide-react";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import githubLogo from "@/assets/github.svg";
@@ -148,36 +148,36 @@ const ChatInput = ({
         hasMessages ? "max-w-212" : "max-w-3xl"
       )}>
         
-        {/* ── Mode Switcher ── */}
-        <div className="flex justify-center w-full mb-1">
-          <div className="flex bg-background/90 backdrop-blur border border-border p-1 rounded-t-xl shadow-sm relative top-px z-10">
-            <button type="button" onClick={() => goalModeEnabled && onGoalModeToggle()} className={cn("px-5 py-1.5 text-[13px] font-semibold rounded-md transition-all flex items-center gap-2", !goalModeEnabled ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:text-foreground")}>
-              Chat
-            </button>
-            <button type="button" onClick={() => !goalModeEnabled && onGoalModeToggle()} className={cn("px-5 py-1.5 text-[13px] font-semibold rounded-md transition-all flex items-center gap-2", goalModeEnabled ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:text-foreground")}>
-              <Target className="size-3.5" /> Goal
-            </button>
-          </div>
-        </div>
-
-        {/* ── Context Strip ── */}
-        <div className="w-full mb-2 flex flex-col sm:flex-row items-center gap-2 px-2 text-xs">
+        {/* ── Context Strip (Top Row) ── */}
+        <div className="w-full mb-2 flex items-center gap-2 px-2 text-xs overflow-x-auto no-scrollbar">
           
+          {/* Status Chip */}
+          <div className="flex items-center gap-1.5 px-2.5 h-7 rounded-full border border-border bg-background/80 shadow-sm shrink-0">
+             <div className={cn("size-2 rounded-full", 
+               status === "submitted" ? "bg-amber-500 animate-pulse" :
+               goalState?.executionStatus && ["running", "verifying", "self_healing"].includes(goalState.executionStatus) ? "bg-amber-500 animate-pulse" : 
+               goalState?.executionStatus === "blocked" ? "bg-red-500" :
+               "bg-green-500" // Awaiting input
+             )} />
+             <span className="text-muted-foreground font-medium text-[11px] uppercase tracking-wider">
+               {status === "submitted" ? "Thinking" :
+                goalState?.executionStatus && ["running", "verifying", "self_healing"].includes(goalState.executionStatus) ? goalState.executionStatus :
+                goalState?.executionStatus === "blocked" ? "Blocked" :
+                "Awaiting Input"}
+             </span>
+          </div>
+
+          {/* Workspace Chip */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 gap-2 rounded-full border-border bg-background/80 backdrop-blur shadow-sm shrink-0">
-                {workspaceMode === "local" ? (
-                  <FolderOpen className="size-3.5 text-muted-foreground" />
-                ) : (
-                  <GitBranch className="size-3.5 text-muted-foreground" />
-                )}
-                <span className="truncate max-w-[200px] text-[13px] font-medium">
-                  {workspaceMode === "local" 
-                    ? (localPath.length > 25 ? `...${localPath.slice(-25)}` : localPath || "Local Folder") 
-                    : repoLabel || "No Repo"}
-                </span>
-                <ChevronDown className="size-3 text-muted-foreground ml-1" />
-              </Button>
+               <Button variant="outline" size="sm" className="h-7 gap-1.5 rounded-full border-border bg-background/80 shadow-sm shrink-0 hover:bg-muted/50 px-2.5">
+                  {workspaceMode === "local" ? <FolderOpen className="size-3 text-muted-foreground" /> : <GitBranch className="size-3 text-muted-foreground" />}
+                  <span className="truncate max-w-[150px] text-[12px] font-medium text-muted-foreground">
+                    {workspaceMode === "local" ? "Local" : "GitHub"}: {workspaceMode === "local" 
+                      ? (localPath.split('/').pop() || "Folder") 
+                      : (repoLabel?.split('/')?.pop() || "Repo")}
+                  </span>
+               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[340px] text-sm p-4" align="start" sideOffset={8}>
               <div className="space-y-4">
@@ -255,59 +255,67 @@ const ChatInput = ({
             </PopoverContent>
           </Popover>
 
-          {/* Goal & Status Pill */}
-          <div 
-            className="flex-1 min-w-0 flex items-center gap-2 px-3 h-8 rounded-full border border-border bg-background/80 hover:bg-muted/50 cursor-pointer transition-colors shadow-sm"
-            onClick={onOpenGoalPanel}
-          >
-            <Target className="size-3.5 text-muted-foreground shrink-0" />
-            <span className="truncate text-[13px]">
-              {!goalState?.goal ? (
-                <span className="text-muted-foreground">No active goal</span>
-              ) : (
-                <>
-                  <span className="font-medium mr-2 text-foreground">
-                    {goalState.goal.length > 50 ? goalState.goal.substring(0, 50) + '...' : goalState.goal}
-                  </span>
-                  {goalState.currentBatchId && (
-                    <span className="text-muted-foreground">({goalState.currentBatchId})</span>
-                  )}
-                </>
-              )}
-            </span>
-            
-            {goalState?.executionStatus && (
-              <span className="ml-auto flex items-center gap-1.5 shrink-0 pl-2 border-l border-border/50">
-                <div className={cn("size-2 rounded-full", 
-                  ["running", "verifying", "self_healing"].includes(goalState.executionStatus) ? "bg-amber-500 animate-pulse" : 
-                  goalState.executionStatus === "completed" ? "bg-green-500" : 
-                  goalState.executionStatus === "failed" || goalState.executionStatus === "blocked" ? "bg-red-500" : 
-                  "bg-muted-foreground"
-                )} />
-                <span className="text-muted-foreground font-medium text-[11px] uppercase tracking-wider">{goalState.executionStatus}</span>
-              </span>
-            )}
-          </div>
+          {/* Goal Progress Chip */}
+          {goalState?.goal && (
+             <Popover>
+               <PopoverTrigger asChild>
+                 <Button variant="outline" size="sm" className="h-7 gap-1.5 rounded-full border-border bg-background/80 shadow-sm shrink-0 hover:bg-muted/50 px-2.5">
+                    <Target className="size-3 text-primary shrink-0" />
+                    <span className="truncate max-w-[200px] text-[12px] font-medium">
+                      Goal: {goalState.goal.length > 25 ? goalState.goal.substring(0, 25) + '...' : goalState.goal}
+                    </span>
+                    <span className="text-muted-foreground ml-1">
+                      {goalState.completedCount || 0}/{Number(goalState.pendingCount || 0) + Number(goalState.completedCount || 0) + Number(goalState.blockedCount || 0)}
+                    </span>
+                 </Button>
+               </PopoverTrigger>
+               <PopoverContent className="w-80 p-0" align="start" sideOffset={8}>
+                 <div className="p-3 border-b font-medium text-sm bg-muted/30 flex justify-between items-center">
+                   <span>Goal Progress</span>
+                   <span className="text-xs text-muted-foreground font-normal">{goalState.completedCount || 0}/{Number(goalState.pendingCount || 0) + Number(goalState.completedCount || 0) + Number(goalState.blockedCount || 0)}</span>
+                 </div>
+                 <div className="max-h-64 overflow-y-auto p-2 space-y-3">
+                    {goalState.roadmap?.phases?.map((p: any, pIdx: number) => (
+                      <div key={pIdx} className="space-y-1.5">
+                        <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1 pt-1 border-b border-border/50 pb-1">{p.name}</div>
+                        {p.milestones.map((m: any) => m.tasks.map((t: any) => (
+                           <div key={t.id} className={cn("text-xs px-2 py-1.5 rounded-md flex items-start gap-2", goalState.currentBatchId === t.id ? "bg-primary/10 text-primary font-medium" : t.status === "completed" ? "text-muted-foreground opacity-70" : t.status === "blocked" ? "text-red-500 bg-red-500/10" : "text-foreground hover:bg-muted/50")}>
+                             {t.status === "completed" ? <CheckCircle2 className="size-3.5 mt-0.5 shrink-0 text-green-500" /> : goalState.currentBatchId === t.id ? <PlayCircle className="size-3.5 mt-0.5 shrink-0 text-primary" /> : t.status === "blocked" ? <AlertCircle className="size-3.5 mt-0.5 shrink-0 text-red-500" /> : <Circle className="size-3.5 mt-0.5 shrink-0 text-muted-foreground/50" />}
+                             <span className={cn(t.status === "completed" && "line-through")}>{t.title}</span>
+                           </div>
+                        )))}
+                      </div>
+                    ))}
+                    {!goalState.roadmap?.phases?.length && (
+                      <div className="text-center text-xs text-muted-foreground p-4">Analyzing goal roadmap...</div>
+                    )}
+                 </div>
+                 <div className="p-2 border-t bg-muted/30">
+                   <Button variant="secondary" size="sm" className="w-full text-xs" onClick={onOpenGoalPanel}>Open Goal Panel</Button>
+                 </div>
+               </PopoverContent>
+             </Popover>
+          )}
 
           {/* PR Buttons */}
           {(workspaceMode === "github" ? createdPrUrl || prReady : prReady) && (
-            <div className="shrink-0">
+            <div className="shrink-0 ml-auto">
               {createdPrUrl ? (
-                <Button className="bg-black/70! text-white h-8 text-xs rounded-full" size="sm" asChild>
+                <Button className="bg-black/70! text-white h-7 text-xs rounded-full px-3 border-0" size="sm" asChild>
                   <a href={createdPrUrl} target="_blank" rel="noreferrer">
-                    <GitPullRequest className="size-3.5 mr-1.5" /> View PR
+                    <GitPullRequest className="size-3 mr-1.5" /> View PR
                   </a>
                 </Button>
               ) : (
                 <Button
-                  className="bg-black/70! text-white h-8 text-xs rounded-full" size="sm"
+                  className="bg-black/70! text-white h-7 text-xs rounded-full px-3 border-0" size="sm"
                   onClick={onCreatePr}
                   disabled={isCreatingPr}
                 >
                   {isCreatingPr ? (
-                    <><Spinner className="size-3.5 mr-1.5" /> Pushing...</>
+                    <><Spinner className="size-3 mr-1.5" /> Pushing...</>
                   ) : (
-                    <><GitPullRequest className="size-3.5 mr-1.5" /> {workspaceMode === "github" ? "Create PR" : "Push & PR"}</>
+                    <><GitPullRequest className="size-3 mr-1.5" /> {workspaceMode === "github" ? "Create PR" : "Push"}</>
                   )}
                 </Button>
               )}
@@ -316,20 +324,34 @@ const ChatInput = ({
         </div>
 
         <PromptInput
-          className={cn("border px-0 bg-background py-0 shadow-md", goalModeEnabled ? "rounded-b-2xl rounded-t-lg ring-1 ring-primary/20" : "rounded-b-2xl rounded-t-lg")}
+          className="border px-0 bg-background py-0 shadow-md rounded-2xl ring-1 ring-border/50"
           onSubmit={handlePromptSubmit}
         >
           <PromptInputBody>
-            <PromptInputTextarea placeholder={goalModeEnabled ? "Describe the goal you want XAgent to plan..." : "Ask XAgent to write anything..."} />
+            <PromptInputTextarea placeholder={goalModeEnabled ? "Describe a goal for XAgent to plan and execute step by step..." : "Ask XAgent anything, / for commands, @ to mention files"} />
           </PromptInputBody>
-          <PromptInputFooter className="mt-3 flex items-center justify-between gap-2">
+          <PromptInputFooter className="mt-2 flex items-center justify-between gap-2 px-1">
             <PromptInputTools className="flex items-center gap-2 flex-wrap">
-              {/* Removed duplicate workspace controls and view goal buttons */}
+              
+              <Button type="button" variant="ghost" size="icon" className="size-8 rounded-full text-muted-foreground hover:bg-muted shrink-0">
+                <Paperclip className="size-4" />
+              </Button>
+
+              {/* Mode Switcher inside input */}
+              <div className="flex bg-muted/50 border border-border/50 p-0.5 rounded-full shadow-sm">
+                <button type="button" onClick={() => goalModeEnabled && onGoalModeToggle()} className={cn("px-3 py-1 text-[12px] font-medium rounded-full transition-all flex items-center gap-1.5", !goalModeEnabled ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}>
+                  Chat
+                </button>
+                <button type="button" onClick={() => !goalModeEnabled && onGoalModeToggle()} className={cn("px-3 py-1 text-[12px] font-medium rounded-full transition-all flex items-center gap-1.5", goalModeEnabled ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}>
+                  <Target className="size-3" /> Goal
+                </button>
+              </div>
+
             </PromptInputTools>
 
             <div className="ml-auto">
               <PromptInputSubmit
-                className="size-10 rounded-xl"
+                className="size-8 rounded-full"
                 onStop={onStop}
                 status={status}
               />
