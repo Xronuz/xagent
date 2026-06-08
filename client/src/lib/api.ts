@@ -45,6 +45,11 @@ export const createSessionPullRequest = async (
     return response.data;
 };
 
+export const pickLocalFolder = async (): Promise<{ path: string }> => {
+    const response = await API.post<{ path: string }>("/session/pick-folder");
+    return response.data;
+};
+
 
 export const getSessionBySlug = async (slugId: string): Promise<SingleSessionResponse> => {
     const response = await API.get<SingleSessionResponse>(`/session/${slugId}`);

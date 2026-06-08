@@ -1,4 +1,6 @@
 import { Request, Response } from "express";
+import { exec } from "child_process";
+import { promisify } from "util";
 import { asyncHandler } from "../middlewares/asyncHandler.middleware";
 import { HTTPSTATUS } from "../config/http-status.config";
 import {
@@ -104,3 +106,30 @@ export const getSessionProcessesController = asyncHandler(
     });
   },
 );
+
+const execAsync = promisify(exec);
+
+export const pickFolderController = asyncHandler(async (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === "production") {
+    return res.status(403).json({ error: "Folder picker is only available in local development" });
+  }
+
+  if (process.platform !== "darwin") {
+    return res.status(400).json({ error: "Folder picker is currently only supported on macOS" });
+  }
+
+  try {
+    const { stdout } = await execAsync(`osascript -e 'POSIX path of (choose folder with prompt "Select project folder for XAgent")'`);
+    const folderPath = stdout.trim();
+    if (!folderPath) {
+       return res.status(400).json({ error: "No folder selected" });
+    }
+    return res.status(200).json({ path: folderPath });
+  } catch (error: any) {
+    if (error.message?.includes("User canceled")) {
+      return res.status(400).json({ error: "User canceled folder selection" });
+    }
+    console.error("Folder picker error:", error);
+    return res.status(500).json({ error: "Failed to open folder picker" });
+  }
+});

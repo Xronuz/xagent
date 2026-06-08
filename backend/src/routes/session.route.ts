@@ -5,11 +5,13 @@ getUserSessionController,
 getSessionBySlugIdController,
 createPullRequestController,
 sessionChatController,
-getSessionProcessesController
+getSessionProcessesController,
+pickFolderController
 } from "../controllers/session.controller";
 
 const sessionRoutes = Router()
     .get("/all", passportAuthenticateJwt, getUserSessionController)
+    .post("/pick-folder", passportAuthenticateJwt, pickFolderController)
     .post("/:slugId/pr", passportAuthenticateJwt, createPullRequestController)
     .get("/:slugId", passportAuthenticateJwt, getSessionBySlugIdController)
     .get("/:slugId/processes", passportAuthenticateJwt, getSessionProcessesController)

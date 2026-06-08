@@ -17,7 +17,7 @@ import { GitBranch, GitPullRequest, FolderOpen, Target } from "lucide-react";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import githubLogo from "@/assets/github.svg";
-import { connectGithub } from "@/lib/api";
+import { connectGithub, pickLocalFolder } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
 
@@ -86,6 +86,25 @@ const ChatInput = ({
 
   const [localPathInput, setLocalPathInput] = useState(localPath);
   const pathInputRef = useRef<HTMLInputElement>(null);
+  const [isPickingFolder, setIsPickingFolder] = useState(false);
+
+  const handlePickFolder = async () => {
+    setIsPickingFolder(true);
+    try {
+      const result = await pickLocalFolder();
+      if (result && result.path) {
+        setLocalPathInput(result.path);
+        onLocalPathChange(result.path);
+      }
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || "Unsupported or canceled.";
+      if (msg !== "User canceled folder selection") {
+         alert(msg);
+      }
+    } finally {
+      setIsPickingFolder(false);
+    }
+  };
 
   useEffect(() => {
     setLocalPathInput(localPath);
@@ -324,24 +343,39 @@ const ChatInput = ({
 
               {/* ── Local Folder Path Input ── */}
               {workspaceMode === "local" && (
-                <div className="flex items-center gap-2 h-10 min-w-72 max-w-xs rounded-lg border border-border bg-background px-3">
-                  <FolderOpen className="size-4 text-muted-foreground shrink-0" />
-                  {hasMessages ? (
-                    <span className="text-sm text-muted-foreground truncate">
-                      {localPath || "No folder selected"}
-                    </span>
-                  ) : (
-                    <input
-                      ref={pathInputRef}
-                      type="text"
-                      value={localPathInput}
-                      onChange={(e) => setLocalPathInput(e.target.value)}
-                      onBlur={handleLocalPathBlur}
-                      onKeyDown={handleLocalPathKeyDown}
-                      placeholder="/Users/you/my-project"
-                      className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                      disabled={hasMessages}
-                    />
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 h-10 min-w-72 max-w-xs rounded-lg border border-border bg-background px-3">
+                    <FolderOpen className="size-4 text-muted-foreground shrink-0" />
+                    {hasMessages ? (
+                      <span className="text-sm text-muted-foreground truncate">
+                        {localPath || "No folder selected"}
+                      </span>
+                    ) : (
+                      <input
+                        ref={pathInputRef}
+                        type="text"
+                        value={localPathInput}
+                        onChange={(e) => setLocalPathInput(e.target.value)}
+                        onBlur={handleLocalPathBlur}
+                        onKeyDown={handleLocalPathKeyDown}
+                        placeholder="/Users/you/my-project"
+                        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                        disabled={hasMessages}
+                      />
+                    )}
+                  </div>
+                  {!hasMessages && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-10"
+                      onClick={handlePickFolder}
+                      disabled={isPickingFolder}
+                    >
+                      {isPickingFolder ? <Spinner className="mr-2" /> : <FolderOpen className="size-4 mr-2" />}
+                      Select Folder
+                    </Button>
                   )}
                 </div>
               )}
